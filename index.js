@@ -8,15 +8,12 @@ const app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
-const SELECT_ALL_STUDENTS_QUERY = `SELECT * FROM students`;
-const SELECT_ALL_TUTORS_QUERY = `SELECT * FROM students WHERE isStudent=0`;
-
 
 const connection = mysql.createConnection({
     host:"localhost",
     user:"root",
     password:"izz3dragonson",
-    database:"bug-tracker"
+    database:"bugTracker"
 });
 
 connection.connect(err => {
@@ -29,39 +26,26 @@ connection.connect(err => {
 
 app.use(cors());
 
-//GET ALL STUDENTS
-app.get('/students', (req, res) => {
-    connection.query(SELECT_ALL_STUDENTS_QUERY, (err,  results) => {
 
+//GET ISSUES
+app.get('/issues', (req,res)=>{
+    const SELECT_ISSUES = `SELECT * FROM issues`
+    connection.query(SELECT_ISSUES, (err, results)=>{
         if(err){
             return res.send(err);
         }else{
             return res.json({
-                data: results
-            });
+                data:results
+            })
         }
-    });
-});
+    })
+})
 
-//GET ALL TUTORS
-app.get('/tutors', (req, res) => {
-    connection.query(SELECT_ALL_TUTORS_QUERY, (err,  results) => {
+//GET ISSUE BY ID
 
-        if(err){
-            return res.send(err);
-        }else{
-            return res.json({
-                data: results
-            });
-        }
-    });
-});
-
-//GET TUTOR ID
-
-app.get('/tutors::eventId', (req, res)=>{
-    const GET_TUTOR_ID = `SELECT tutorId FROM events WHERE eventId="${req.params.eventId}" `
-    connection.query(GET_TUTOR_ID, (err, results)=>{
+app.get('/issues::userId', (req, res)=>{
+    const GET_USER_ISSUES = `SELECT * FROM issues WHERE userId="${req.params.userId}" `
+    connection.query(GET_USER_ISSUES, (err, results)=>{
         if(err){
             return res.send(err)
         }else{
@@ -72,23 +56,10 @@ app.get('/tutors::eventId', (req, res)=>{
     })
 })
 
-//GET EVENTS FOR  STUDENT
-app.get('/events::studentId', (req,res)=>{
-    const SELECT_EVENTS_FOR_STUDENT = `SELECT * FROM events WHERE studentId  ='${req.params.studentId}'`
-    connection.query(SELECT_EVENTS_FOR_STUDENT, (err, results)=>{
-        if(err){
-            return res.send(err);
-        }else{
-            return res.json({
-                data:results
-            })
-        }
-    })
-})
-//GET EVENTS FOR  TUTOR
-app.get('/events/tutor::tutorId', (req,res)=>{
-    const SELECT_EVENTS_FOR_STUDENT = `SELECT * FROM events WHERE tutorId  ='${req.params.tutorId}'`
-    connection.query(SELECT_EVENTS_FOR_STUDENT, (err, results)=>{
+//GET USERS
+app.get('/users', (req,res)=>{
+    const SELECT_USERS = `SELECT * FROM users`
+    connection.query(SELECT_USERS, (err, results)=>{
         if(err){
             return res.send(err);
         }else{
@@ -99,10 +70,11 @@ app.get('/events/tutor::tutorId', (req,res)=>{
     })
 })
 
-//GET ONE STUDENTS COURSES
-app.get('/registration::email', (req,res)=>{
-    const SELECT_COURSES_FOR_STUDENT = `SELECT courseName FROM registration WHERE email  ='${req.params.email}'`
-    connection.query(SELECT_COURSES_FOR_STUDENT, (err, results)=>{
+//GET PROJECTS
+
+app.get('/projects', (req,res)=>{
+    const SELECT_PROJECTS = `SELECT * FROM projects`
+    connection.query(SELECT_PROJECTS, (err, results)=>{
         if(err){
             return res.send(err);
         }else{
@@ -113,10 +85,10 @@ app.get('/registration::email', (req,res)=>{
     })
 })
 
-//GET ALL COURSES
-app.get('/courses', (req,res)=>{
-    const SELECT_ALL_COURSES_QUERY = `SELECT * FROM COURSES`
-    connection.query(SELECT_ALL_COURSES_QUERY, (err, results)=>{
+//GET PROJECT BY ID
+app.get('/projects::projectId', (req,res)=>{
+    const SELECT_PROJECT = `SELECT * FROM projects WHERE projectId  ='${req.params.projectId}'`
+    connection.query(SELECT_PROJECT, (err, results)=>{
         if(err){
             return res.send(err);
         }else{
@@ -128,70 +100,34 @@ app.get('/courses', (req,res)=>{
 })
 
 
-//POST STUDENT/TUTOR AND STUDENT COURSES
+//POST ISSUE
 
-app.post("/students",  (req,res) => {
-    const {email, password, firstName, lastName, status, studentCourses, isStudent} = req.body;
-    let courseArray = studentCourses.map(item=>{return{courseName:item.name, email:email}})
+app.post("/issues",  (req,res) => {
+    const {projectId, description, severity, status, ticketType, points, assignedTo, createDate, submittedBy} = req.body;
 
-    if(isStudent){
-        courseArray.forEach(item=>{
-            const INSERT_COURSES_QUERY = `INSERT INTO registration (email, courseName) VALUES ("${item.email}", "${item.courseName}")`;
-            connection.query(INSERT_COURSES_QUERY, (err, results)=>{
-                if(err){
-                    return err;
-                }else{
-                    return  console.log(`succesfully registered course`)
-                }
-            })
-        })
-    }
+    const INSERT_ISSUE_QUERY = `INSERT INTO issues 
+                                                (projectId, description, severity, status, ticketType, points, assignedTo, createDate, submittedBy) 
+                                                VALUES 
+                                                ("${projectId}", "${description}", "${severity}", "${status}", "${ticketType}",
+                                                "${points}", "${assignedTo}", "${createDate}", "${submittedBy}")`;
 
-    const INSERT_STUDENT_QUERY =  `INSERT INTO students  (email, password, firstName, lastName, status, isStudent) 
-                                   VALUES("${email}", "${password}", "${firstName}",  "${lastName}",  "${status}", ${isStudent}) `;
 
-    connection.query(INSERT_STUDENT_QUERY, (err,  results)=>{
-        if(err){
-            return err
-        }else{
-            return  console.log("succesfully registered")
-        }
-    })
-})
-
-//POST  EVENT
-app.post('/events', (req,res)=>{
-    const {studentId, title, date, tutorId} = req.body;
-    const INSERT_EVENT_QUERY = `INSERT INTO events (studentId, title, date, tutorId) VALUES ("${studentId}", "${title}", "${date}", "${tutorId}")`;
-    connection.query(INSERT_EVENT_QUERY, (err, results)=>{
+    connection.query(INSERT_ISSUE_QUERY, (err, results)=>{
         if(err){
             return res.send(err);
         }else{
-            return  res.send("succesfully saved  event")
+            return  console.log(`succesfully submitted issue`)
         }
     })
 })
 
-//POST COURSE REGISTRATION
 
-    app.post('/registration', (req,res)=>{
-        const {email, courseName} = req.body;
-        const INSERT_COURSES_QUERY = `INSERT INTO registration (email, courseName) VALUES ("${email}", "${courseName}")`;
-        connection.query(INSERT_COURSES_QUERY, (err, results)=>{
-            if(err){
-                return res.send(err);
-            }else{
-                return  res.send(`succesfully registered course "${courseName}"`)
-            }
-        })
-    })
-//DELETE STUDENT EVENTS
+//DELETE ISSUE
 
-    app.delete('/events', (req, res)=>{
-        const {eventId} = req.body;
-        console.log(eventId)
-            const INSERT_EVENT_QUERY = `DELETE FROM events WHERE eventId="${eventId}"`;
-            connection.query(INSERT_EVENT_QUERY, (err, results)=>{
+    app.delete('/issues', (req, res)=>{
+        const {issueId} = req.body;
+            const DELETE_ISSUE_QUERY = `DELETE FROM issues WHERE issueId="${issueId}"`;
+            connection.query(DELETE_ISSUE_QUERY, (err, results)=>{
                 if(err){
                     return res.send(err);
                 }else{
