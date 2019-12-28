@@ -5,8 +5,8 @@ var bodyParser = require('body-parser');
 
 const app = express();
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json({limit: '50mb'}));
+app.use(bodyParser.urlencoded({limit: '50mb', extended: true}));
 
 
 const connection = mysql.createConnection({
@@ -43,9 +43,23 @@ app.get('/issues', (req,res)=>{
 
 //GET ISSUE BY ID
 
-app.get('/issues::userId', (req, res)=>{
-    const GET_USER_ISSUES = `SELECT * FROM issues WHERE userId="${req.params.userId}" `
-    connection.query(GET_USER_ISSUES, (err, results)=>{
+app.get('/projects/:projectId/issues/:issueId', (req, res)=>{
+    const GET_ISSUE = `SELECT * FROM issues WHERE issueId="${req.params.issueId}" AND projectId="${req.params.projectId}" `
+    connection.query(GET_ISSUE, (err, results)=>{
+        if(err){
+            return res.send(err)
+        }else{
+            return res.json({
+                data:results
+            })
+        }
+    })
+})
+//GET ISSUES BY PROJECT ID
+
+app.get('/projects/:projectId/issues', (req, res)=>{
+    const GET_ISSUES = `SELECT * FROM issues WHERE projectId="${req.params.projectId}" `
+    connection.query(GET_ISSUES, (err, results)=>{
         if(err){
             return res.send(err)
         }else{
@@ -86,7 +100,7 @@ app.get('/projects', (req,res)=>{
 })
 
 //GET PROJECT BY ID
-app.get('/projects::projectId', (req,res)=>{
+app.get('/projects/:projectId', (req,res)=>{
     const SELECT_PROJECT = `SELECT * FROM projects WHERE projectId  ='${req.params.projectId}'`
     connection.query(SELECT_PROJECT, (err, results)=>{
         if(err){
@@ -99,17 +113,58 @@ app.get('/projects::projectId', (req,res)=>{
     })
 })
 
+//GET ALL USER PROJECTS
+
+app.get('/user/:userId/projects', (req, res)=>{
+    const SELECT_PROJECTS_BY_USERID = `SELECT * 
+                                       FROM issues
+                                       JOIN projects 
+                                       ON projects.projectId=issues.projectId
+                                       WHERE userId='${req.params.userId}'`
+
+
+    connection.query(SELECT_PROJECTS_BY_USERID, (err, results)=>{
+        if(err){
+            return res.send(err);
+        }else{
+            return res.json({
+                data:results
+            })
+        }
+    })
+
+})
+
+
+
+//EDITS ISSUE DATA
+app.put("/issues/:issueId", (req, res)=>{
+    const {attachment, title, description, severity, status, ticketType, points, userId, createDate, submittedBy} = req.body;
+    const UPDATE_ISSUE = `UPDATE issues 
+                          SET attachment='${attachment}',  title='${title}', description='${description}', severity='${severity}', status='${status}',
+                                          ticketType='${ticketType}', points='${points}', userId='${userId}', createDate='${createDate}',
+                                          submittedBy='${submittedBy}'
+                          WHERE issueId='${req.params.issueId}'`
+
+    connection.query(UPDATE_ISSUE, (err, results)=>{
+        if(err){
+            return res.send(err);
+        }else{
+            return  console.log(`succesfully updated issue`)
+        }
+    })
+})
 
 //POST ISSUE
 
 app.post("/issues",  (req,res) => {
-    const {projectId, description, severity, status, ticketType, points, assignedTo, createDate, submittedBy} = req.body;
+    const {projectId,attachment, title, description, severity, status, ticketType, points, userId, createDate, submittedBy} = req.body;
 
     const INSERT_ISSUE_QUERY = `INSERT INTO issues 
-                                                (projectId, description, severity, status, ticketType, points, assignedTo, createDate, submittedBy) 
+                                                (projectId, attachment, title, description, severity, status, ticketType, points, userId, createDate, submittedBy) 
                                                 VALUES 
-                                                ("${projectId}", "${description}", "${severity}", "${status}", "${ticketType}",
-                                                "${points}", "${assignedTo}", "${createDate}", "${submittedBy}")`;
+                                                ("${projectId}", "${attachment}", "${title}", "${description}", "${severity}", "${status}", "${ticketType}",
+                                                "${points}", "${userId}", "${createDate}", "${submittedBy}")`;
 
 
     connection.query(INSERT_ISSUE_QUERY, (err, results)=>{
