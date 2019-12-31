@@ -1,9 +1,13 @@
+const dotenv = require("dotenv");
+dotenv.config();
 const express = require("express");
+const app = express();
 const cors = require("cors");
 const mysql = require("mysql");
-var bodyParser = require('body-parser');
+const bodyParser = require('body-parser');
+const jwt = require("jsonwebtoken");
 
-const app = express();
+
 
 app.use(bodyParser.json({limit: '50mb'}));
 app.use(bodyParser.urlencoded({limit: '50mb', extended: true}));
@@ -27,18 +31,68 @@ connection.connect(err => {
 app.use(cors());
 
 
+function verifyToken(req, res, next){
+
+    const bearerHeader = req.headers['authorization'];
+    if(typeof bearerHeader !== 'undefined'){
+
+        const bearer = bearerHeader.split(" ");
+        const token = bearer[1];
+        req.token = token;
+        next();
+
+    }else{
+        res.sendStatus(403);
+    }
+}
+
+app.post('/login', (req,res)=>{
+    const {userName, password} = req.body;
+    console.log(req.body)
+    const SELECT_USERNAME_PASSWORD =  `SELECT * FROM users WHERE userName="${userName}" AND password="${password}"`;
+    connection.query(SELECT_USERNAME_PASSWORD, (err, results)=>{
+        if(results==0){
+            return res.sendStatus(403)
+
+        }else{
+            if(err){
+                return res.send(err);
+            }else{
+                jwt.sign({results}, 'secretkey',{expiresIn: '1000s'}, (err, token)=>{
+                    res.json({
+                        token:token,
+                        user:results
+                    })
+                })
+            }
+        }
+
+    })
+
+})
+
+
+
 //GET ISSUES
 app.get('/issues', (req,res)=>{
-    const SELECT_ISSUES = `SELECT * FROM issues`
-    connection.query(SELECT_ISSUES, (err, results)=>{
+    jwt.verify(req.token,'secretkey', (err, authData)=>{
         if(err){
-            return res.send(err);
+            res.sendStatus(403);
         }else{
-            return res.json({
-                data:results
+            const SELECT_ISSUES = `SELECT * FROM issues`
+            connection.query(SELECT_ISSUES, (err, results)=>{
+                if(err){
+                    return res.send(err);
+                }else{
+                    return res.json({
+                        data:results,
+                        authData: authData
+                    })
+                }
             })
         }
     })
+
 })
 
 //GET ISSUE BY ID
@@ -141,7 +195,7 @@ app.get('/user/:userId/projects', (req, res)=>{
 app.put("/issues/:issueId", (req, res)=>{
     const {attachment, title, description, severity, status, ticketType, points, userId, createDate, submittedBy} = req.body;
     const UPDATE_ISSUE = `UPDATE issues 
-                          SET attachment='${attachment}',  title='${title}', description='${description}', severity='${severity}', status='${status}',
+                          SET attachment='${attachment}',  title='${title}', issueDescription='${description}', severity='${severity}', status='${status}',
                                           ticketType='${ticketType}', points='${points}', userId='${userId}', createDate='${createDate}',
                                           submittedBy='${submittedBy}'
                           WHERE issueId='${req.params.issueId}'`
@@ -161,7 +215,7 @@ app.post("/issues",  (req,res) => {
     const {projectId,attachment, title, description, severity, status, ticketType, points, userId, createDate, submittedBy} = req.body;
 
     const INSERT_ISSUE_QUERY = `INSERT INTO issues 
-                                                (projectId, attachment, title, description, severity, status, ticketType, points, userId, createDate, submittedBy) 
+                                                (projectId, attachment, title, issueDescription, severity, status, ticketType, points, userId, createDate, submittedBy) 
                                                 VALUES 
                                                 ("${projectId}", "${attachment}", "${title}", "${description}", "${severity}", "${status}", "${ticketType}",
                                                 "${points}", "${userId}", "${createDate}", "${submittedBy}")`;
