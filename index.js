@@ -48,9 +48,10 @@ function verifyToken(req, res, next){
 
 app.post('/login', (req,res)=>{
     const {userName, password} = req.body;
-    console.log(req.body)
     const SELECT_USERNAME_PASSWORD =  `SELECT * FROM users WHERE userName="${userName}" AND password="${password}"`;
     connection.query(SELECT_USERNAME_PASSWORD, (err, results)=>{
+        console.log(results)
+        console.log(req.body)
         if(results==0){
             return res.sendStatus(403)
 
@@ -58,7 +59,7 @@ app.post('/login', (req,res)=>{
             if(err){
                 return res.send(err);
             }else{
-                jwt.sign({results}, 'secretkey',{expiresIn: '1000s'}, (err, token)=>{
+                jwt.sign({results}, process.env.SECRET_OR_KEY,{expiresIn: '1000s'}, (err, token)=>{
                     res.json({
                         token:token,
                         user:results
@@ -75,7 +76,7 @@ app.post('/login', (req,res)=>{
 
 //GET ISSUES
 app.get('/issues', (req,res)=>{
-    jwt.verify(req.token,'secretkey', (err, authData)=>{
+    jwt.verify(req.token, process.env.SECRET_OR_KEY, (err, authData)=>{
         if(err){
             res.sendStatus(403);
         }else{
@@ -124,18 +125,46 @@ app.get('/projects/:projectId/issues', (req, res)=>{
     })
 })
 
-//GET USERS
-app.get('/users', (req,res)=>{
-    const SELECT_USERS = `SELECT * FROM users`
-    connection.query(SELECT_USERS, (err, results)=>{
+//GET USER BY ID
+app.get('/user:userId', verifyToken, (req,res)=>{
+    jwt.verify(req.token, process.env.SECRET_OR_KEY, (err, authData)=>{
         if(err){
-            return res.send(err);
-        }else{
-            return res.json({
-                data:results
+            return res.sendStatus(403)
+        } else{
+            const SELECT_USERS = `SELECT * FROM users WHERE userId="${req.params.userId}"`
+            connection.query(SELECT_USERS, (err, results)=>{
+                if(err){
+                    return res.send(err);
+                }else{
+                    return res.json({
+                        data:results
+                    })
+                }
             })
         }
     })
+
+})
+
+//GET USERS
+app.get('/users', verifyToken, (req,res)=>{
+    jwt.verify(req.token,process.env.SECRET_OR_KEY, (err, authData)=>{
+      if(err){
+          return res.sendStatus(403)
+      } else{
+          const SELECT_USERS = `SELECT * FROM users`
+          connection.query(SELECT_USERS, (err, results)=>{
+              if(err){
+                  return res.send(err);
+              }else{
+                  return res.json({
+                      data:results
+                  })
+              }
+          })
+      }
+    })
+
 })
 
 //GET PROJECTS
