@@ -50,8 +50,6 @@ app.post('/login', (req,res)=>{
     const {userName, password} = req.body;
     const SELECT_USERNAME_PASSWORD =  `SELECT * FROM users WHERE userName="${userName}" AND password="${password}"`;
     connection.query(SELECT_USERNAME_PASSWORD, (err, results)=>{
-        console.log(results)
-        console.log(req.body)
         if(results==0){
             return res.sendStatus(403)
 
@@ -59,7 +57,7 @@ app.post('/login', (req,res)=>{
             if(err){
                 return res.send(err);
             }else{
-                jwt.sign({results}, process.env.SECRET_OR_KEY,{expiresIn: '1000s'}, (err, token)=>{
+                jwt.sign({results}, process.env.SECRET_OR_KEY,{expiresIn: '1 day'}, (err, token)=>{
                     res.json({
                         token:token,
                         user:results
@@ -112,21 +110,27 @@ app.get('/projects/:projectId/issues/:issueId', (req, res)=>{
 })
 //GET ISSUES BY PROJECT ID
 
-app.get('/projects/:projectId/issues', (req, res)=>{
-    const GET_ISSUES = `SELECT * FROM issues WHERE projectId="${req.params.projectId}" `
-    connection.query(GET_ISSUES, (err, results)=>{
+app.get('/projects/:projectId/issues', verifyToken, (req, res)=>{
+    jwt.verify(req.token, process.env.SECRET_OR_KEY, (err, authData)=>{
         if(err){
-            return res.send(err)
-        }else{
-            return res.json({
-                data:results
+            return res.sendStatus(403)
+        } else{
+            const GET_ISSUES = `SELECT * FROM issues WHERE projectId="${req.params.projectId}" `
+            connection.query(GET_ISSUES, (err, results)=>{
+                if(err){
+                    return res.send(err);
+                }else{
+                    return res.json({
+                        data:results
+                    })
+                }
             })
         }
     })
 })
 
 //GET USER BY ID
-app.get('/user:userId', verifyToken, (req,res)=>{
+app.get('/users/:userId', verifyToken, (req,res)=>{
     jwt.verify(req.token, process.env.SECRET_OR_KEY, (err, authData)=>{
         if(err){
             return res.sendStatus(403)
@@ -169,55 +173,77 @@ app.get('/users', verifyToken, (req,res)=>{
 
 //GET PROJECTS
 
-app.get('/projects', (req,res)=>{
-    const SELECT_PROJECTS = `SELECT * FROM projects`
-    connection.query(SELECT_PROJECTS, (err, results)=>{
+app.get('/projects',verifyToken, (req,res)=>{
+    jwt.verify(req.token, process.env.SECRET_OR_KEY, (err, authData)=>{
         if(err){
-            return res.send(err);
-        }else{
-            return res.json({
-                data:results
+            return res.sendStatus(403)
+        }
+        else {
+            const SELECT_PROJECTS = `SELECT * FROM projects`
+            connection.query(SELECT_PROJECTS, (err, results)=>{
+                if(err){
+                    return res.send(err);
+                }else{
+                    return res.json({
+                        data:results
+                    })
+                }
             })
         }
+
     })
+
 })
 
 //GET PROJECT BY ID
-app.get('/projects/:projectId', (req,res)=>{
-    const SELECT_PROJECT = `SELECT * FROM projects WHERE projectId  ='${req.params.projectId}'`
-    connection.query(SELECT_PROJECT, (err, results)=>{
+app.get('/projects/:projectId', verifyToken, (req,res)=>{
+    jwt.verify(req.token, process.env.SECRET_OR_KEY, (err, authData)=>{
         if(err){
-            return res.send(err);
-        }else{
-            return res.json({
-                data:results
+            return res.sendStatus(403)
+        }
+        else {
+            const SELECT_PROJECT = `SELECT * FROM projects WHERE projectId  ='${req.params.projectId}'`
+            connection.query(SELECT_PROJECT, (err, results)=>{
+                if(err){
+                    return res.send(err);
+                }else{
+                    return res.json({
+                        data:results
+                    })
+                }
             })
         }
+
     })
 })
 
 //GET ALL USER PROJECTS
 
-app.get('/user/:userId/projects', (req, res)=>{
-    const SELECT_PROJECTS_BY_USERID = `SELECT * 
-                                       FROM issues
-                                       JOIN projects 
+app.get('/users/:userId/projects', verifyToken, (req, res)=>{
+    jwt.verify(req.token, process.env.SECRET_OR_KEY, (err, authData)=>{
+        if(err){
+            return res.sendStatus(403)
+        }
+        else {
+            const SELECT_PROJECTS_BY_USERID = `SELECT DISTINCT projects.projectId, projects.projectDescription, projects.projectName, projects.createDate
+                                       FROM projects
+                                       JOIN issues 
                                        ON projects.projectId=issues.projectId
                                        WHERE userId='${req.params.userId}'`
-
-
-    connection.query(SELECT_PROJECTS_BY_USERID, (err, results)=>{
-        if(err){
-            return res.send(err);
-        }else{
-            return res.json({
-                data:results
+            connection.query(SELECT_PROJECTS_BY_USERID, (err, results)=>{
+                if(err){
+                    return res.send(err);
+                }else{
+                    return res.json({
+                        data:results
+                    })
+                }
             })
         }
+
     })
 
 })
-
 
 
 //EDITS ISSUE DATA
