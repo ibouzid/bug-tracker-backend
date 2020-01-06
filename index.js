@@ -267,12 +267,12 @@ app.put("/issues/:issueId", (req, res)=>{
 //POST ISSUE
 
 app.post("/issues",  (req,res) => {
-    const {projectId,attachment, title, description, severity, status, ticketType, points, userId, createDate, submittedBy} = req.body;
+    const {projectId,projectName, attachment, title, issueDescription, severity, status, ticketType, points, userId, createDate, submittedBy} = req.body;
 
     const INSERT_ISSUE_QUERY = `INSERT INTO issues 
-                                                (projectId, attachment, title, issueDescription, severity, status, ticketType, points, userId, createDate, submittedBy) 
+                                                (projectId, projectName, attachment, title, issueDescription, severity, status, ticketType, points, userId, createDate, submittedBy) 
                                                 VALUES 
-                                                ("${projectId}", "${attachment}", "${title}", "${description}", "${severity}", "${status}", "${ticketType}",
+                                                ("${projectId}", "${projectName}", "${attachment}", "${title}", "${issueDescription}", "${severity}", "${status}", "${ticketType}",
                                                 "${points}", "${userId}", "${createDate}", "${submittedBy}")`;
 
 
@@ -280,10 +280,30 @@ app.post("/issues",  (req,res) => {
         if(err){
             return res.send(err);
         }else{
-            return  console.log(`succesfully submitted issue`)
+            return  console.log(`succesfully added issue`)
         }
     })
 })
+//POST PROJECT
+
+app.post("/projects",  (req,res) => {
+    const {projectDescription,projectName, projectManager, createDate} = req.body;
+
+    const INSERT_PROJECT_QUERY = `INSERT INTO issues 
+                                                (projectDescription, projectName, projectManager, createDate) 
+                                                VALUES 
+                                                ("${projectDescription}", "${projectName}", "${projectManager}", "${createDate}")`;
+
+
+    connection.query(INSERT_PROJECT_QUERY, (err, results)=>{
+        if(err){
+            return res.send(err);
+        }else{
+            return  console.log(`succesfully added project`)
+        }
+    })
+})
+
 
 
 //DELETE ISSUE
