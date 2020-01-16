@@ -57,7 +57,7 @@ app.post('/login', (req,res)=>{
             if(err){
                 return res.send(err);
             }else{
-                jwt.sign({results}, process.env.SECRET_OR_KEY,{expiresIn: '1 day'}, (err, token)=>{
+                jwt.sign({results}, process.env.SECRET_OR_KEY,{expiresIn: '1 min'}, (err, token)=>{
                     res.json({
                         token:token,
                         user:results
@@ -123,6 +123,26 @@ app.get('/projects/:projectId/issues', verifyToken, (req, res)=>{
             return res.sendStatus(403)
         } else{
             const GET_ISSUES = `SELECT * FROM issues WHERE projectId="${req.params.projectId}" `
+            connection.query(GET_ISSUES, (err, results)=>{
+                if(err){
+                    return res.send(err);
+                }else{
+                    return res.json({
+                        data:results
+                    })
+                }
+            })
+        }
+    })
+})
+//GET ISSUES BY PROJECT ID AND USERID
+
+app.get('/projects/:projectId/user/:userId/issues', verifyToken, (req, res)=>{
+    jwt.verify(req.token, process.env.SECRET_OR_KEY, (err, authData)=>{
+        if(err){
+            return res.sendStatus(403)
+        } else{
+            const GET_ISSUES = `SELECT * FROM issues WHERE projectId="${req.params.projectId}" AND userId="${req.params.userId}" `
             connection.query(GET_ISSUES, (err, results)=>{
                 if(err){
                     return res.send(err);
@@ -252,7 +272,30 @@ app.get('/users/:userId/projects', verifyToken, (req, res)=>{
     })
 
 })
+//GET ALL USER ISSUES
 
+app.get('/users/:userId/issues', verifyToken, (req, res)=>{
+
+    jwt.verify(req.token, process.env.SECRET_OR_KEY, (err, authData)=>{
+        if(err){
+            return res.sendStatus(403)
+        }
+        else {
+            const SELECT_PROJECTS_BY_USERID = `SELECT * FROM issues WHERE userId='${req.params.userId}'`
+            connection.query(SELECT_PROJECTS_BY_USERID, (err, results)=>{
+                if(err){
+                    return res.send(err);
+                }else{
+                    return res.json({
+                        data:results
+                    })
+                }
+            })
+        }
+
+    })
+
+})
 
 //EDITS ISSUE DATA
 app.put("/issues/:issueId", verifyToken, (req, res)=> {
@@ -260,11 +303,11 @@ app.put("/issues/:issueId", verifyToken, (req, res)=> {
         if (err) {
             return res.sendStatus(403)
         } else {
-            const {title, issueDescription, severity, status, ticketType, points, userId, submittedBy, lastUpdated} = req.body;
+            console.log(req.body)
+            const {title, projectId, issueDescription, severity, status, ticketType, points, userId, submittedBy, lastUpdated} = req.body;
             const UPDATE_ISSUE = `UPDATE issues 
-                          SET  lastUpdated='${lastUpdated}',  title='${title}', issueDescription='${issueDescription}', severity='${severity}', status='${status}',
-                                          ticketType='${ticketType}', points='${points}', userId='${userId}', submittedBy='${submittedBy}'
-                          WHERE issueId='${req.params.issueId}'`
+                                  SET  lastUpdated='${lastUpdated}', projectId='${projectId}', title='${title}', issueDescription='${issueDescription}', severity='${severity}', status='${status}', ticketType='${ticketType}', points='${points}', userId='${userId}', submittedBy='${submittedBy}'
+                                  WHERE issueId='${req.params.issueId}'`
 
             connection.query(UPDATE_ISSUE, (err, results) => {
                 if (err) {
@@ -285,12 +328,12 @@ app.post("/issues", verifyToken,  (req,res) => {
             return res.sendStatus(403)
         }
         else {
-            const {projectId, lastUpdated, projectName, attachment, title, issueDescription, severity, status, ticketType, points, userId, createDate, submittedBy} = req.body;
+            const {projectId, lastUpdated, projectName, title, issueDescription, severity, status, ticketType, points, userId, createDate, submittedBy} = req.body;
 
             const INSERT_ISSUE_QUERY = `INSERT INTO issues 
-                                                (projectId, lastUpdated, projectName, attachment, title, issueDescription, severity, status, ticketType, points, userId, createDate, submittedBy) 
+                                                (projectId, lastUpdated, projectName, title, issueDescription, severity, status, ticketType, points, userId, createDate, submittedBy) 
                                                 VALUES 
-                                                ("${projectId}", "${lastUpdated}", "${projectName}", "${attachment}", "${title}", "${issueDescription}", "${severity}", "${status}", "${ticketType}",
+                                                ("${projectId}", "${lastUpdated}", "${projectName}", "${title}", "${issueDescription}", "${severity}", "${status}", "${ticketType}",
                                                 "${points}", "${userId}", "${createDate}", "${submittedBy}")`;
 
 
